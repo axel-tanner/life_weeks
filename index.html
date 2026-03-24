@@ -8,8 +8,8 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #111;
-      color: #ccc;
+      background: #f5f5f0;
+      color: #333;
       font-family: monospace;
       padding: 24px;
     }
@@ -17,7 +17,7 @@
     h1 {
       font-size: 1.1rem;
       font-weight: normal;
-      color: #888;
+      color: #aaa;
       margin-bottom: 16px;
       letter-spacing: 0.05em;
     }
@@ -35,13 +35,13 @@
       flex-direction: column;
       gap: 4px;
       font-size: 0.75rem;
-      color: #666;
+      color: #999;
     }
 
     form input {
-      background: #1e1e1e;
-      border: 1px solid #333;
-      color: #ccc;
+      background: #fff;
+      border: 1px solid #ddd;
+      color: #333;
       padding: 5px 8px;
       font-family: monospace;
       font-size: 0.85rem;
@@ -72,19 +72,19 @@
       transition: color 0.15s;
     }
 
-    #grid-wrap:hover .year-label { color: #444; }
+    #grid-wrap:hover .year-label { color: #aaa; }
 
     .week {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      border: 1px solid #333;
+      border: 1px solid #ccc;
       flex-shrink: 0;
     }
 
-    .week.past     { background: #2a7ae2; border-color: #2a7ae2; }
+    .week.past      { background: #2a7ae2; border-color: #2a7ae2; }
     .week.pre-birth { border-color: transparent; }
-    .week.post-end { border-color: #1e1e1e; }
+    .week.post-end  { border-color: #e8e8e4; }
 
     #stats {
       margin-top: 20px;
@@ -94,7 +94,7 @@
       transition: color 0.15s;
     }
 
-    #grid-wrap:hover #stats { color: #444; }
+    #grid-wrap:hover #stats { color: #aaa; }
 
     #lookup-section {
       display: flex;
@@ -103,7 +103,7 @@
       gap: 10px;
       margin-top: 28px;
       padding-top: 20px;
-      border-top: 1px solid #1e1e1e;
+      border-top: 1px solid #e0e0da;
       margin-bottom: 16px;
     }
 
@@ -112,13 +112,13 @@
       flex-direction: column;
       gap: 4px;
       font-size: 0.75rem;
-      color: #666;
+      color: #999;
     }
 
     #inp-country {
-      background: #1e1e1e;
-      border: 1px solid #333;
-      color: #ccc;
+      background: #fff;
+      border: 1px solid #ddd;
+      color: #333;
       padding: 5px 8px;
       font-family: monospace;
       font-size: 0.85rem;
@@ -127,9 +127,9 @@
     }
 
     #btn-lookup {
-      background: #1e1e1e;
-      color: #888;
-      border: 1px solid #333;
+      background: #fff;
+      color: #999;
+      border: 1px solid #ddd;
       padding: 6px 14px;
       font-family: monospace;
       font-size: 0.85rem;
@@ -137,12 +137,12 @@
       cursor: pointer;
     }
 
-    #btn-lookup:hover:not(:disabled) { border-color: #555; color: #ccc; }
+    #btn-lookup:hover:not(:disabled) { border-color: #bbb; color: #333; }
     #btn-lookup:disabled { opacity: 0.4; cursor: default; }
 
     #lookup-result {
       font-size: 0.75rem;
-      color: #555;
+      color: #999;
       align-self: center;
       display: flex;
       align-items: center;
@@ -160,7 +160,7 @@
       text-decoration: underline;
     }
 
-    #btn-apply:hover { color: #6aaaf5; }
+    #btn-apply:hover { color: #1f62b8; }
   </style>
 </head>
 <body>
