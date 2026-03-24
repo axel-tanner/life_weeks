@@ -125,14 +125,43 @@
 
     #grid-zone:hover #stats { color: #aaa; }
 
+    #settings-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+      margin-bottom: 14px;
+      font-size: 0.75rem;
+      color: #bbb;
+    }
+
+    #settings-toggle:hover { color: #888; }
+
+    #settings-arrow {
+      font-size: 0.75rem;
+    }
+
+    #settings-panel {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.2s ease, opacity 0.2s ease;
+      opacity: 0;
+      margin-bottom: 0;
+    }
+
+    #settings-panel.open {
+      max-height: 300px;
+      opacity: 1;
+      margin-bottom: 24px;
+    }
+
+
     #lookup-section {
       display: flex;
       flex-wrap: wrap;
       align-items: flex-end;
       gap: 10px;
-      margin-top: 28px;
-      padding-top: 20px;
-      border-top: 1px solid #e0e0da;
       margin-bottom: 16px;
     }
 
@@ -195,33 +224,40 @@
 <body>
   <h1>life in weeks</h1>
 
+  <div id="settings-toggle">
+    <span id="settings-arrow">&gt;</span>
+    <span id="settings-label">settings</span>
+  </div>
+
+  <div id="settings-panel">
+    <div id="lookup-section">
+      <label>
+        country life expectancy
+        <input id="inp-country" list="country-list" type="text" placeholder="type a country…" autocomplete="off" />
+        <datalist id="country-list"></datalist>
+      </label>
+      <button id="btn-lookup" type="button">lookup</button>
+      <span id="lookup-result"></span>
+    </div>
+
+    <form id="params-form">
+      <label>
+        birthday
+        <input type="date" id="inp-birthday" />
+      </label>
+      <label>
+        life expectation (years)
+        <input type="number" id="inp-life" min="1" max="150" step="any" />
+      </label>
+    </form>
+  </div>
+
   <div id="grid-wrap">
     <div id="grid-zone">
       <div id="grid"></div>
       <div id="stats"></div>
     </div>
   </div>
-
-  <div id="lookup-section">
-    <label>
-      country life expectancy
-      <input id="inp-country" list="country-list" type="text" placeholder="type a country…" autocomplete="off" />
-      <datalist id="country-list"></datalist>
-    </label>
-    <button id="btn-lookup" type="button">lookup</button>
-    <span id="lookup-result"></span>
-  </div>
-
-  <form id="params-form" style="border-top:none; padding-top:0;">
-    <label>
-      birthday
-      <input type="date" id="inp-birthday" />
-    </label>
-    <label>
-      life expectation (years)
-      <input type="number" id="inp-life" min="1" max="150" step="any" />
-    </label>
-  </form>
 
   <script>
     // ── helpers ────────────────────────────────────────────────────────────
@@ -525,13 +561,34 @@
       }, next - now);
     }
 
+    // ── settings panel toggle ──────────────────────────────────────────────
+
+    function openSettings() {
+      document.getElementById('settings-panel').classList.add('open');
+      document.getElementById('settings-arrow').textContent = 'v';
+    }
+
+    function closeSettings() {
+      document.getElementById('settings-panel').classList.remove('open');
+      document.getElementById('settings-arrow').textContent = '>';
+    }
+
+    document.getElementById('settings-toggle').addEventListener('click', () => {
+      const panel = document.getElementById('settings-panel');
+      panel.classList.contains('open') ? closeSettings() : openSettings();
+    });
+
     // ── init ───────────────────────────────────────────────────────────────
 
     const { birthday, lifeExpectation } = getParams();
     setFormValues(birthday, lifeExpectation);
-    // restore country input
     const savedCountry = ls.get('country', '');
     if (savedCountry) document.getElementById('inp-country').value = savedCountry;
+
+    // Open settings if no values are stored yet
+    const hasValues = ls.get('birthday', '') && ls.get('lifeExpectation', '');
+    if (!hasValues) openSettings();
+
     render(birthday, lifeExpectation);
     scheduleRefresh();
   </script>
