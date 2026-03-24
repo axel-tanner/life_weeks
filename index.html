@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life in Weeks</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #111;
+      color: #ccc;
+      font-family: monospace;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      font-weight: normal;
+      color: #888;
+      margin-bottom: 16px;
+      letter-spacing: 0.05em;
+    }
+
+    form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+
+    form label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: #666;
+    }
+
+    form input {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #ccc;
+      padding: 5px 8px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      border-radius: 3px;
+      width: 160px;
+    }
+
+    form button {
+      background: #2a7ae2;
+      color: #fff;
+      border: none;
+      padding: 6px 16px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      border-radius: 3px;
+      cursor: pointer;
+      align-self: flex-end;
+    }
+
+    form button:hover { background: #1f62b8; }
+
+    #grid {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .year-row {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .year-label {
+      font-size: 0.65rem;
+      color: #444;
+      width: 36px;
+      flex-shrink: 0;
+      text-align: right;
+      padding-right: 6px;
+    }
+
+    .week {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1px solid #333;
+      flex-shrink: 0;
+    }
+
+    .week.past      { background: #2a7ae2; border-color: #2a7ae2; }
+    .week.pre-birth { border-color: #252525; }
+    .week.post-end  { border-color: #1e1e1e; }
+
+    #stats {
+      margin-top: 20px;
+      font-size: 0.72rem;
+      color: #444;
+      line-height: 1.8;
+    }
+
+    #lookup-section {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #1e1e1e;
+    }
+
+    #lookup-section label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: #666;
+    }
+
+    #inp-country {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #ccc;
+      padding: 5px 8px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      border-radius: 3px;
+      width: 220px;
+    }
+
+    #btn-lookup {
+      background: #1e1e1e;
+      color: #888;
+      border: 1px solid #333;
+      padding: 6px 14px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    #btn-lookup:hover:not(:disabled) { border-color: #555; color: #ccc; }
+    #btn-lookup:disabled { opacity: 0.4; cursor: default; }
+
+    #lookup-result {
+      font-size: 0.75rem;
+      color: #555;
+      align-self: center;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #btn-apply {
+      background: none;
+      border: none;
+      color: #2a7ae2;
+      font-family: monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    #btn-apply:hover { color: #6aaaf5; }
+  </style>
+</head>
+<body>
+  <h1>life in weeks</h1>
+
+  <div id="lookup-section">
+    <label>
+      country life expectancy
+      <input id="inp-country" list="country-list" type="text" placeholder="type a country…" autocomplete="off" />
+      <datalist id="country-list"></datalist>
+    </label>
+    <button id="btn-lookup" type="button">lookup</button>
+    <span id="lookup-result"></span>
+  </div>
+
+  <form id="params-form">
+    <label>
+      birthday
+      <input type="date" id="inp-birthday" />
+    </label>
+    <label>
+      life expectation (years)
+      <input type="number" id="inp-life" min="1" max="150" step="0.5" />
+    </label>
+    <button type="submit">update</button>
+  </form>
+
+  <div id="grid"></div>
+  <div id="stats"></div>
+
+  <script>
+    // ── helpers ────────────────────────────────────────────────────────────
+
+    // Return a plain UTC midnight Date from "YYYY-MM-DD"
+    function parseDate(str) {
+      const [y, m, d] = str.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d));
+    }
+
+    // Format a Date as "YYYY-MM-DD"
+    function fmtDate(d) {
+      return d.toISOString().slice(0, 10);
+    }
+
+    // Add fractional years to a Date (uses 365.2425 days/year)
+    function addYears(date, years) {
+      return new Date(date.getTime() + years * 365.2425 * 86400000);
+    }
+
+    // Monday of ISO week 1 for a given year
+    function isoWeek1Monday(year) {
+      // ISO week 1 contains the first Thursday of January
+      const jan4 = new Date(Date.UTC(year, 0, 4)); // Jan 4 is always in week 1
+      const dow = jan4.getUTCDay() || 7;           // 1=Mon … 7=Sun
+      return new Date(jan4.getTime() - (dow - 1) * 86400000);
+    }
+
+    // Number of ISO weeks in a year
+    function isoWeeksInYear(year) {
+      const w1 = isoWeek1Monday(year);
+      const w1next = isoWeek1Monday(year + 1);
+      return Math.round((w1next - w1) / (7 * 86400000));
+    }
+
+    // Monday of week w (1-based) in year
+    function weekMonday(year, w) {
+      return new Date(isoWeek1Monday(year).getTime() + (w - 1) * 7 * 86400000);
+    }
+
+    // ── render ─────────────────────────────────────────────────────────────
+
+    function render(birthdayStr, lifeExpectation) {
+      const birthday = parseDate(birthdayStr);
+      const endDate  = addYears(birthday, lifeExpectation);
+      const today    = new Date(Date.UTC(
+        new Date().getUTCFullYear(),
+        new Date().getUTCMonth(),
+        new Date().getUTCDate()
+      ));
+
+      const birthYear = birthday.getUTCFullYear();
+      const endYear   = endDate.getUTCFullYear();
+
+      const grid = document.getElementById('grid');
+      grid.innerHTML = '';
+
+      let totalWeeks = 0;
+      let pastWeeks  = 0;
+
+      for (let year = birthYear; year <= endYear; year++) {
+        const numWeeks = isoWeeksInYear(year);
+        const row = document.createElement('div');
+        row.className = 'year-row';
+
+        const label = document.createElement('span');
+        label.className = 'year-label';
+        label.textContent = year;
+        row.appendChild(label);
+
+        for (let w = 1; w <= numWeeks; w++) {
+          const monday = weekMonday(year, w);
+          const sunday = new Date(monday.getTime() + 6 * 86400000);
+
+          const circle = document.createElement('span');
+          circle.className = 'week';
+
+          // Tooltip
+          circle.title = `${fmtDate(monday)} – ${fmtDate(sunday)}`;
+
+          if (sunday < birthday) {
+            circle.classList.add('pre-birth');
+          } else if (monday > endDate) {
+            circle.classList.add('post-end');
+          } else {
+            totalWeeks++;
+            if (sunday < today) {
+              circle.classList.add('past');
+              pastWeeks++;
+            }
+          }
+
+          row.appendChild(circle);
+        }
+
+        grid.appendChild(row);
+      }
+
+      // Stats
+      const pct = totalWeeks ? ((pastWeeks / totalWeeks) * 100).toFixed(1) : 0;
+      document.getElementById('stats').innerHTML =
+        `${pastWeeks} weeks lived &nbsp;/&nbsp; ${totalWeeks} total &nbsp;·&nbsp; ${pct}% elapsed`;
+    }
+
+    // ── country lookup ─────────────────────────────────────────────────────
+
+    // ISO2 code → country name  (World Bank accepts ISO2)
+    const COUNTRIES = {
+      AF:'Afghanistan',DZ:'Algeria',AO:'Angola',AR:'Argentina',AM:'Armenia',
+      AU:'Australia',AT:'Austria',AZ:'Azerbaijan',BD:'Bangladesh',BY:'Belarus',
+      BE:'Belgium',BJ:'Benin',BO:'Bolivia',BA:'Bosnia and Herzegovina',
+      BW:'Botswana',BR:'Brazil',BG:'Bulgaria',BF:'Burkina Faso',BI:'Burundi',
+      KH:'Cambodia',CM:'Cameroon',CA:'Canada',CF:'Central African Republic',
+      TD:'Chad',CL:'Chile',CN:'China',CO:'Colombia',CG:'Congo',CR:'Costa Rica',
+      HR:'Croatia',CU:'Cuba',CY:'Cyprus',CZ:'Czech Republic',DK:'Denmark',
+      DO:'Dominican Republic',CD:'DR Congo',EC:'Ecuador',EG:'Egypt',
+      SV:'El Salvador',ER:'Eritrea',EE:'Estonia',ET:'Ethiopia',FI:'Finland',
+      FR:'France',GA:'Gabon',GE:'Georgia',DE:'Germany',GH:'Ghana',GR:'Greece',
+      GT:'Guatemala',GN:'Guinea',HT:'Haiti',HN:'Honduras',HU:'Hungary',
+      IN:'India',ID:'Indonesia',IR:'Iran',IQ:'Iraq',IE:'Ireland',IL:'Israel',
+      IT:'Italy',JM:'Jamaica',JP:'Japan',JO:'Jordan',KZ:'Kazakhstan',KE:'Kenya',
+      KP:'North Korea',KR:'South Korea',XK:'Kosovo',KW:'Kuwait',KG:'Kyrgyzstan',
+      LA:'Laos',LV:'Latvia',LB:'Lebanon',LS:'Lesotho',LR:'Liberia',LY:'Libya',
+      LT:'Lithuania',LU:'Luxembourg',MG:'Madagascar',MW:'Malawi',MY:'Malaysia',
+      ML:'Mali',MR:'Mauritania',MX:'Mexico',MD:'Moldova',MN:'Mongolia',
+      MA:'Morocco',MZ:'Mozambique',MM:'Myanmar',NA:'Namibia',NP:'Nepal',
+      NL:'Netherlands',NZ:'New Zealand',NI:'Nicaragua',NE:'Niger',NG:'Nigeria',
+      MK:'North Macedonia',NO:'Norway',OM:'Oman',PK:'Pakistan',PA:'Panama',
+      PY:'Paraguay',PE:'Peru',PH:'Philippines',PL:'Poland',PT:'Portugal',
+      QA:'Qatar',RO:'Romania',RU:'Russia',RW:'Rwanda',SA:'Saudi Arabia',
+      SN:'Senegal',RS:'Serbia',SL:'Sierra Leone',SK:'Slovakia',SI:'Slovenia',
+      SO:'Somalia',ZA:'South Africa',SS:'South Sudan',ES:'Spain',LK:'Sri Lanka',
+      SD:'Sudan',SE:'Sweden',CH:'Switzerland',SY:'Syria',TW:'Taiwan',
+      TJ:'Tajikistan',TZ:'Tanzania',TH:'Thailand',TL:'Timor-Leste',TG:'Togo',
+      TN:'Tunisia',TR:'Turkey',TM:'Turkmenistan',UG:'Uganda',UA:'Ukraine',
+      AE:'United Arab Emirates',GB:'United Kingdom',US:'United States',
+      UY:'Uruguay',UZ:'Uzbekistan',VE:'Venezuela',VN:'Vietnam',YE:'Yemen',
+      ZM:'Zambia',ZW:'Zimbabwe'
+    };
+
+    // Populate datalist
+    (function() {
+      const dl = document.getElementById('country-list');
+      Object.entries(COUNTRIES)
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .forEach(([code, name]) => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.dataset.code = code;
+          dl.appendChild(opt);
+        });
+    })();
+
+    // Reverse map: name → ISO2
+    function nameToCode(name) {
+      const lower = name.trim().toLowerCase();
+      return Object.entries(COUNTRIES).find(([, n]) => n.toLowerCase() === lower)?.[0];
+    }
+
+    let fetchedLifeValue = null;
+
+    document.getElementById('btn-lookup').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-lookup');
+      const resultEl = document.getElementById('lookup-result');
+      const name = document.getElementById('inp-country').value.trim();
+      const code = nameToCode(name);
+
+      if (!code) {
+        resultEl.textContent = 'country not found';
+        return;
+      }
+
+      btn.disabled = true;
+      resultEl.textContent = 'fetching…';
+
+      try {
+        const url = `https://api.worldbank.org/v2/country/${code}/indicator/SP.DYN.LE00.IN?format=json&mrv=5`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+
+        // Find the most recent entry with a non-null value
+        const entries = (json[1] || []).filter(e => e.value != null);
+        if (!entries.length) throw new Error('no data');
+
+        const entry = entries[0];
+        fetchedLifeValue = parseFloat(parseFloat(entry.value).toFixed(1));
+
+        resultEl.innerHTML =
+          `${entry.country.value} (${entry.date}): <strong style="color:#ccc">${fetchedLifeValue} yrs</strong> &nbsp;` +
+          `<button id="btn-apply" type="button">apply</button>`;
+
+        document.getElementById('btn-apply').addEventListener('click', () => {
+          document.getElementById('inp-life').value = fetchedLifeValue;
+        });
+      } catch (err) {
+        resultEl.textContent = `error: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Allow pressing Enter in country input
+    document.getElementById('inp-country').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btn-lookup').click();
+    });
+
+    // ── URL params & form ──────────────────────────────────────────────────
+
+    const DEFAULT_BIRTHDAY = '1990-01-01';
+    const DEFAULT_LIFE     = 80;
+
+    function getParams() {
+      const p = new URLSearchParams(location.search);
+      return {
+        birthday:        p.get('birthday')        || DEFAULT_BIRTHDAY,
+        lifeExpectation: parseFloat(p.get('life_expectation') || DEFAULT_LIFE),
+      };
+    }
+
+    function setFormValues(birthday, lifeExpectation) {
+      document.getElementById('inp-birthday').value = birthday;
+      document.getElementById('inp-life').value     = lifeExpectation;
+    }
+
+    document.getElementById('params-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const birthday = document.getElementById('inp-birthday').value;
+      const life     = document.getElementById('inp-life').value;
+      const url = new URL(location.href);
+      url.searchParams.set('birthday', birthday);
+      url.searchParams.set('life_expectation', life);
+      history.pushState({}, '', url);
+      render(birthday, parseFloat(life));
+    });
+
+    // ── init ───────────────────────────────────────────────────────────────
+
+    const { birthday, lifeExpectation } = getParams();
+    setFormValues(birthday, lifeExpectation);
+    render(birthday, lifeExpectation);
+  </script>
+</body>
+</html>
