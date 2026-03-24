@@ -59,7 +59,7 @@
     .year-row {
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 1px;
     }
 
     .year-label {
@@ -74,17 +74,41 @@
 
     #grid-wrap:hover .year-label { color: #aaa; }
 
-    .week {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      border: 1px solid #ccc;
-      flex-shrink: 0;
+    :root {
+      --o-size: 14px;
+      --x-size: 16px;
+      --x-offset: -0.1em; /* positive = down, negative = up */
     }
 
-    .week.past      { background: #2a7ae2; border-color: #2a7ae2; }
-    .week.pre-birth { border-color: transparent; }
-    .week.post-end  { border-color: #e8e8e4; }
+    .week {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: var(--o-size);
+      font-weight: 600;
+      line-height: 1;
+      position: relative;
+      display: inline-block;
+      color: #898989;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .week.past::after {
+      content: 'x';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: var(--x-offset);
+      font-size: var(--x-size);
+      font-weight: normal;
+      color: #c00;
+      font-family: 'Courier New', Courier, monospace;
+      pointer-events: none;
+    }
+
+    .week.pre-birth { color: transparent; }
+    .week.post-end  { color: #e0e0da; }
 
     #stats {
       margin-top: 20px;
@@ -267,6 +291,7 @@
 
           const circle = document.createElement('span');
           circle.className = 'week';
+          circle.textContent = 'O';
 
           // Tooltip
           circle.title = `${fmtDate(monday)} – ${fmtDate(sunday)}`;
