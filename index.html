@@ -49,19 +49,6 @@
       width: 160px;
     }
 
-    form button {
-      background: #2a7ae2;
-      color: #fff;
-      border: none;
-      padding: 6px 16px;
-      font-family: monospace;
-      font-size: 0.85rem;
-      border-radius: 3px;
-      cursor: pointer;
-      align-self: flex-end;
-    }
-
-    form button:hover { background: #1f62b8; }
 
     #grid {
       display: flex;
@@ -85,7 +72,7 @@
       transition: color 0.15s;
     }
 
-    #grid:hover .year-label { color: #444; }
+    #grid-wrap:hover .year-label { color: #444; }
 
     .week {
       width: 10px;
@@ -102,9 +89,12 @@
     #stats {
       margin-top: 20px;
       font-size: 0.72rem;
-      color: #444;
+      color: transparent;
       line-height: 1.8;
+      transition: color 0.15s;
     }
+
+    #grid-wrap:hover #stats { color: #444; }
 
     #lookup-section {
       display: flex;
@@ -176,8 +166,10 @@
 <body>
   <h1>life in weeks</h1>
 
-  <div id="grid"></div>
-  <div id="stats"></div>
+  <div id="grid-wrap">
+    <div id="grid"></div>
+    <div id="stats"></div>
+  </div>
 
   <div id="lookup-section">
     <label>
@@ -198,7 +190,6 @@
       life expectation (years)
       <input type="number" id="inp-life" min="1" max="150" step="any" />
     </label>
-    <button type="submit">update</button>
   </form>
 
   <script>
@@ -373,6 +364,7 @@
       document.getElementById('inp-life').value = val;
       ls.set('lifeExpectation', val);
       ls.set('gender', gender);
+      onParamChange();
     }
 
     document.getElementById('btn-lookup').addEventListener('click', async () => {
@@ -446,18 +438,21 @@
       document.getElementById('inp-life').value     = lifeExpectation;
     }
 
-    document.getElementById('params-form').addEventListener('submit', (e) => {
-      e.preventDefault();
+    function onParamChange() {
       const birthday = document.getElementById('inp-birthday').value;
       const life     = document.getElementById('inp-life').value;
+      if (!birthday || !life) return;
       ls.set('birthday', birthday);
       ls.set('lifeExpectation', life);
       const url = new URL(location.href);
       url.searchParams.set('birthday', birthday);
       url.searchParams.set('life_expectation', life);
-      history.pushState({}, '', url);
+      history.replaceState({}, '', url);
       render(birthday, parseFloat(life));
-    });
+    }
+
+    document.getElementById('inp-birthday').addEventListener('change', onParamChange);
+    document.getElementById('inp-life').addEventListener('input', onParamChange);
 
     // ── auto-refresh at UTC midnight ───────────────────────────────────────
 
