@@ -355,8 +355,8 @@
           circle.textContent = 'O';
 
           // Stable per-week position jitter (±2px x, ±1.5px y)
-          const dx = jitter(year, w, 1, 0.02).toFixed(3);
-          const dy = jitter(year, w, 2, 0.02).toFixed(3);
+          const dx = jitter(year, w, 1, 0.018).toFixed(3);
+          const dy = jitter(year, w, 2, 0.017).toFixed(3);
           circle.style.transform = `translate(${dx}em, ${dy}em)`;
 
           // Tooltip
@@ -441,8 +441,10 @@
       return Object.entries(COUNTRIES).find(([, n]) => n.toLowerCase() === lower)?.[0];
     }
 
+    const WB_BASE = 'https:/' + '/api.worldbank.org/v2/country';
+
     async function fetchIndicator(code, indicator) {
-      const url = `https://api.worldbank.org/v2/country/${code}/indicator/${indicator}?format=json&mrv=5`;
+      const url = `${WB_BASE}/${code}/indicator/${indicator}?format=json&mrv=5`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
