@@ -77,12 +77,15 @@
 
     .year-label {
       font-size: 0.65rem;
-      color: #444;
+      color: transparent;
       width: 36px;
       flex-shrink: 0;
       text-align: right;
       padding-right: 6px;
+      transition: color 0.15s;
     }
+
+    #grid:hover .year-label { color: #444; }
 
     .week {
       width: 10px;
@@ -92,9 +95,9 @@
       flex-shrink: 0;
     }
 
-    .week.past      { background: #2a7ae2; border-color: #2a7ae2; }
-    .week.pre-birth { border-color: #252525; }
-    .week.post-end  { border-color: #1e1e1e; }
+    .week.past     { background: #2a7ae2; border-color: #2a7ae2; }
+    .week.pre-birth { border-color: transparent; }
+    .week.post-end { border-color: #1e1e1e; }
 
     #stats {
       margin-top: 20px;
@@ -108,9 +111,10 @@
       flex-wrap: wrap;
       align-items: flex-end;
       gap: 10px;
-      margin-bottom: 20px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #1e1e1e;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid #1e1e1e;
+      margin-bottom: 16px;
     }
 
     #lookup-section label {
@@ -172,6 +176,9 @@
 <body>
   <h1>life in weeks</h1>
 
+  <div id="grid"></div>
+  <div id="stats"></div>
+
   <div id="lookup-section">
     <label>
       country life expectancy
@@ -182,20 +189,17 @@
     <span id="lookup-result"></span>
   </div>
 
-  <form id="params-form">
+  <form id="params-form" style="border-top:none; padding-top:0;">
     <label>
       birthday
       <input type="date" id="inp-birthday" />
     </label>
     <label>
       life expectation (years)
-      <input type="number" id="inp-life" min="1" max="150" step="0.5" />
+      <input type="number" id="inp-life" min="1" max="150" step="any" />
     </label>
     <button type="submit">update</button>
   </form>
-
-  <div id="grid"></div>
-  <div id="stats"></div>
 
   <script>
     // ── helpers ────────────────────────────────────────────────────────────
@@ -355,7 +359,21 @@
       return Object.entries(COUNTRIES).find(([, n]) => n.toLowerCase() === lower)?.[0];
     }
 
-    let fetchedLifeValue = null;
+    async function fetchIndicator(code, indicator) {
+      const url = `https://api.worldbank.org/v2/country/${code}/indicator/${indicator}?format=json&mrv=5`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const entries = (json[1] || []).filter(e => e.value != null);
+      if (!entries.length) throw new Error('no data');
+      return entries[0];
+    }
+
+    function applyValue(val, gender) {
+      document.getElementById('inp-life').value = val;
+      ls.set('lifeExpectation', val);
+      ls.set('gender', gender);
+    }
 
     document.getElementById('btn-lookup').addEventListener('click', async () => {
       const btn = document.getElementById('btn-lookup');
@@ -363,34 +381,34 @@
       const name = document.getElementById('inp-country').value.trim();
       const code = nameToCode(name);
 
-      if (!code) {
-        resultEl.textContent = 'country not found';
-        return;
-      }
+      if (!code) { resultEl.textContent = 'country not found'; return; }
 
       btn.disabled = true;
       resultEl.textContent = 'fetching…';
 
       try {
-        const url = `https://api.worldbank.org/v2/country/${code}/indicator/SP.DYN.LE00.IN?format=json&mrv=5`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = await res.json();
+        const [total, male, female] = await Promise.all([
+          fetchIndicator(code, 'SP.DYN.LE00.IN'),
+          fetchIndicator(code, 'SP.DYN.LE00.MA.IN'),
+          fetchIndicator(code, 'SP.DYN.LE00.FE.IN'),
+        ]);
 
-        // Find the most recent entry with a non-null value
-        const entries = (json[1] || []).filter(e => e.value != null);
-        if (!entries.length) throw new Error('no data');
-
-        const entry = entries[0];
-        fetchedLifeValue = parseFloat(parseFloat(entry.value).toFixed(1));
+        const fmt = v => parseFloat(parseFloat(v).toFixed(1));
+        const [t, m, f] = [fmt(total.value), fmt(male.value), fmt(female.value)];
+        const year = total.date;
+        const country = total.country.value;
 
         resultEl.innerHTML =
-          `${entry.country.value} (${entry.date}): <strong style="color:#ccc">${fetchedLifeValue} yrs</strong> &nbsp;` +
-          `<button id="btn-apply" type="button">apply</button>`;
+          `<span style="color:#888">${country} (${year})</span> &nbsp;` +
+          `<span style="font-size:1.3em">&#9898;</span> <strong style="color:#ccc">${t}</strong> <button class="apply-btn" data-val="${t}" data-gender="avg">apply</button> &nbsp;` +
+          `<span style="font-size:1.3em">&#9794;</span> <strong style="color:#ccc">${m}</strong> <button class="apply-btn" data-val="${m}" data-gender="male">apply</button> &nbsp;` +
+          `<span style="font-size:1.3em">&#9792;</span> <strong style="color:#ccc">${f}</strong> <button class="apply-btn" data-val="${f}" data-gender="female">apply</button>`;
 
-        document.getElementById('btn-apply').addEventListener('click', () => {
-          document.getElementById('inp-life').value = fetchedLifeValue;
-        });
+        ls.set('country', name);
+
+        resultEl.querySelectorAll('.apply-btn').forEach(b =>
+          b.addEventListener('click', () => applyValue(b.dataset.val, b.dataset.gender))
+        );
       } catch (err) {
         resultEl.textContent = `error: ${err.message}`;
       } finally {
@@ -403,6 +421,13 @@
       if (e.key === 'Enter') document.getElementById('btn-lookup').click();
     });
 
+    // ── persistence ────────────────────────────────────────────────────────
+
+    const ls = {
+      get: (k, def) => { const v = localStorage.getItem('lifeweeks.' + k); return v !== null ? v : def; },
+      set: (k, v)   => localStorage.setItem('lifeweeks.' + k, v),
+    };
+
     // ── URL params & form ──────────────────────────────────────────────────
 
     const DEFAULT_BIRTHDAY = '1990-01-01';
@@ -411,8 +436,8 @@
     function getParams() {
       const p = new URLSearchParams(location.search);
       return {
-        birthday:        p.get('birthday')        || DEFAULT_BIRTHDAY,
-        lifeExpectation: parseFloat(p.get('life_expectation') || DEFAULT_LIFE),
+        birthday:        p.get('birthday')        || ls.get('birthday',        DEFAULT_BIRTHDAY),
+        lifeExpectation: parseFloat(p.get('life_expectation') || ls.get('lifeExpectation', DEFAULT_LIFE)),
       };
     }
 
@@ -425,6 +450,8 @@
       e.preventDefault();
       const birthday = document.getElementById('inp-birthday').value;
       const life     = document.getElementById('inp-life').value;
+      ls.set('birthday', birthday);
+      ls.set('lifeExpectation', life);
       const url = new URL(location.href);
       url.searchParams.set('birthday', birthday);
       url.searchParams.set('life_expectation', life);
@@ -432,11 +459,31 @@
       render(birthday, parseFloat(life));
     });
 
+    // ── auto-refresh at UTC midnight ───────────────────────────────────────
+
+    function scheduleRefresh() {
+      const now  = Date.now();
+      const next = new Date(now);
+      next.setUTCHours(24, 0, 0, 0); // next UTC midnight
+      setTimeout(() => {
+        const { birthday, lifeExpectation } = getParams();
+        render(birthday, lifeExpectation);
+        setInterval(() => {
+          const { birthday, lifeExpectation } = getParams();
+          render(birthday, lifeExpectation);
+        }, 86400000); // every 24 h after that
+      }, next - now);
+    }
+
     // ── init ───────────────────────────────────────────────────────────────
 
     const { birthday, lifeExpectation } = getParams();
     setFormValues(birthday, lifeExpectation);
+    // restore country input
+    const savedCountry = ls.get('country', '');
+    if (savedCountry) document.getElementById('inp-country').value = savedCountry;
     render(birthday, lifeExpectation);
+    scheduleRefresh();
   </script>
 </body>
 </html>
