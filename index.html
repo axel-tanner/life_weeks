@@ -53,13 +53,19 @@
     #grid {
       display: flex;
       flex-direction: column;
-      gap: 0.px;
+      gap: 0px;
     }
 
     .year-row {
       display: flex;
       align-items: center;
       gap: 1px;
+    }
+
+    #grid.justified .year-row {
+      justify-content: space-between;
+      gap: 0;
+      width: 100%;
     }
 
     .year-label {
@@ -89,7 +95,7 @@
       font-family: 'Courier New', Courier, monospace;
       font-size: var(--o-size);
       font-weight: 600;
-      line-height: 1;
+      line-height: 0.8;
       position: relative;
       display: inline-block;
       color: #898989;
@@ -354,10 +360,11 @@
           circle.className = 'week';
           circle.textContent = 'O';
 
-          // Stable per-week position jitter (±2px x, ±1.5px y)
-          const dx = jitter(year, w, 1, 0.018).toFixed(3);
-          const dy = jitter(year, w, 2, 0.017).toFixed(3);
-          circle.style.transform = `translate(${dx}em, ${dy}em)`;
+          if (!blockAlign) {
+            const dx = jitter(year, w, 1, 0.018).toFixed(3);
+            const dy = jitter(year, w, 2, 0.017).toFixed(3);
+            circle.style.transform = `translate(${dx}em, ${dy}em)`;
+          }
 
           // Tooltip
           circle.title = `${fmtDate(monday)} – ${fmtDate(sunday)}`;
@@ -379,6 +386,8 @@
 
         grid.appendChild(row);
       }
+
+      if (blockAlign) grid.classList.add('justified');
 
       // Stats
       const pct = totalWeeks ? ((pastWeeks / totalWeeks) * 100).toFixed(1) : 0;
@@ -440,6 +449,8 @@
       const lower = name.trim().toLowerCase();
       return Object.entries(COUNTRIES).find(([, n]) => n.toLowerCase() === lower)?.[0];
     }
+
+    const blockAlign = !new URLSearchParams(location.search).has('noblock');
 
     const WB_BASE = 'https:/' + '/api.worldbank.org/v2/country';
 
